@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="할 일을 효율적으로 관리하는 세련된 To-Do List 애플리케이션">
+    <title>✨ My To-Do List</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- 배경 장식 요소 -->
+        <div class="bg-decoration">
+            <div class="circle circle-1"></div>
+            <div class="circle circle-2"></div>
+            <div class="circle circle-3"></div>
+        </div>
+
+        <!-- 메인 카드 -->
+        <div class="todo-card">
+            <header class="card-header">
+                <h1>📝 My To-Do List</h1>
+                <p class="subtitle">오늘의 할 일을 관리해보세요</p>
+                <div class="stats">
+                    <span class="stat-item" id="totalCount">전체: 0</span>
+                    <span class="stat-divider">|</span>
+                    <span class="stat-item" id="completedCount">완료: 0</span>
+                </div>
+            </header>
+
+            <!-- 입력 영역 -->
+            <div class="input-section">
+                <div class="input-wrapper">
+                    <input type="text" id="todoInput" placeholder="할 일을 입력하세요..." maxlength="100" autocomplete="off">
+                    <button id="addBtn" class="add-btn" title="추가">
+                        <span class="btn-icon">+</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 기간 조회 섹션 -->
+            <div class="date-filter-section">
+                <div class="date-filter-header">
+                    <span class="filter-icon">📅</span>
+                    <span>기간별 조회</span>
+                    <button class="toggle-filter-btn" id="toggleFilterBtn">
+                        <span class="arrow">▼</span>
+                    </button>
+                </div>
+                <div class="date-filter-body" id="dateFilterBody">
+                    <div class="date-inputs">
+                        <div class="date-input-group">
+                            <label for="startDate">시작일</label>
+                            <input type="date" id="startDate">
+                        </div>
+                        <span class="date-separator">~</span>
+                        <div class="date-input-group">
+                            <label for="endDate">종료일</label>
+                            <input type="date" id="endDate">
+                        </div>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="filter-btn search-btn" id="searchBtn">🔍 조회</button>
+                        <button class="filter-btn reset-btn" id="resetBtn">↻ 전체보기</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 할 일 목록 -->
+            <ul class="todo-list" id="todoList">
+                <!-- 할 일 항목들이 여기에 추가됩니다 -->
+            </ul>
+
+            <!-- 빈 상태 메시지 -->
+            <div class="empty-state" id="emptyState">
+                <span class="empty-icon">🎯</span>
+                <p>할 일을 추가해보세요!</p>
+            </div>
+        </div>
+
+        <!-- 저작권 -->
+        <footer class="app-footer">
+            <p>Made with ❤️ | 2026</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
