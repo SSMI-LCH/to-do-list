@@ -8,8 +8,10 @@
         "dev": "node server.js"
     },
     "dependencies": {
-        "express": "^4.18.2",
         "cors": "^2.8.5",
+        "dotenv": "^17.2.4",
+        "express": "^4.18.2",
+        "firebase-admin": "^13.6.1",
         "sql.js": "^1.10.3"
     },
     "keywords": [

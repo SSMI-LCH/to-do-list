@@ -2,6 +2,7 @@
  * ✨ To-Do List Application
  * 할 일 관리 웹 애플리케이션 - JavaScript
  * Node.js 백엔드 API 연동
+ * Google/Kakao 로그인 + 회원 관리 지원
  */
 
 // ===================================
@@ -9,8 +10,332 @@
 // ===================================
 
 const API_BASE = '/api/todos';
+const USER_API = '/api/users';
+// 카카오 개발자 콘솔에서 발급받은 REST_API 키 (User calls it REST_API_KEY but uses it for JS SDK init)
+const KAKAO_REST_API_KEY = window.ENV?.KAKAO_REST_API_KEY || '';
+
+if (!window.ENV) {
+    console.error('❌ [Critical] 환경 변수(window.ENV)가 로드되지 않았습니다. /env.js 로딩을 확인하세요.');
+} else if (!KAKAO_REST_API_KEY) {
+    console.error('❌ [Critical] Kakao JS Key가 설정되지 않았습니다. .env 파일을 확인하세요.');
+}
 let todos = [];
 let isFiltered = false;
+let currentUser = null; // 현재 로그인한 사용자 정보
+
+// ===================================
+// Kakao SDK 초기화
+// ===================================
+
+/**
+ * Kakao SDK 초기화
+ */
+function initKakao() {
+    if (typeof Kakao !== 'undefined' && !Kakao.isInitialized()) {
+        try {
+            Kakao.init(KAKAO_REST_API_KEY);
+            console.log('✅ Kakao SDK 초기화 완료');
+            return true;
+        } catch (e) {
+            console.error('Kakao SDK 초기화 오류:', e);
+            return false;
+        }
+    }
+    return typeof Kakao !== 'undefined' && Kakao.isInitialized();
+}
+
+// 페이지 로드 시 Kakao SDK 초기화
+document.addEventListener('DOMContentLoaded', () => {
+    // SDK 로드 대기 후 초기화
+    setTimeout(() => {
+        initKakao();
+        // 카카오 로그인 리다이렉트 처리
+        handleKakaoRedirect();
+    }, 500);
+});
+
+/**
+ * 카카오 로그인 요청
+ */
+function loginWithKakao() {
+    // SDK 로딩 확인 및 초기화
+    if (typeof Kakao === 'undefined') {
+        console.log('카카오 SDK 로딩 대기 중...');
+        // SDK 로딩을 기다렸다가 다시 시도
+        setTimeout(() => {
+            if (typeof Kakao !== 'undefined') {
+                initKakao();
+                loginWithKakao();
+            } else {
+                alert('카카오 SDK를 로드할 수 없습니다. 페이지를 새로고침해주세요.');
+            }
+        }, 1000);
+        return;
+    }
+
+    if (!Kakao.isInitialized()) {
+        if (!initKakao()) {
+            alert('카카오 SDK 초기화에 실패했습니다. JavaScript 키를 확인해주세요.');
+            return;
+        }
+    }
+
+    // 카카오 로그인 요청 (기본 프로필 정보만 사용)
+    Kakao.Auth.authorize({
+        redirectUri: window.location.origin + '/kakao-callback.html'
+    });
+}
+
+/**
+ * 카카오 로그인 리다이렉트 처리 (인가 코드 처리)
+ */
+function handleKakaoRedirect() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+
+    if (code && window.location.pathname === '/') {
+        // 인가 코드가 있으면 토큰 요청
+        processKakaoLogin(code);
+        // URL에서 code 파라미터 제거
+        window.history.replaceState({}, document.title, '/');
+    }
+}
+
+/**
+ * 카카오 인가 코드로 로그인 처리
+ */
+async function processKakaoLogin(code) {
+    console.log('🔄 카카오 로그인 처리 중...');
+
+    try {
+        // 서버에서 토큰 교환 및 사용자 정보 가져오기
+        const response = await fetch('/api/auth/kakao', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code, redirectUri: window.location.origin + '/kakao-callback.html' })
+        });
+
+        if (!response.ok) {
+            throw new Error('카카오 로그인 실패');
+        }
+
+        const result = await response.json();
+        currentUser = result.user;
+
+        if (result.isNew) {
+            console.log('🎉 카카오 신규 회원가입 완료!');
+        } else {
+            console.log('🔑 카카오 기존 회원 로그인');
+        }
+
+        // UI 업데이트
+        document.getElementById('userAvatar').src = currentUser.picture || 'https://via.placeholder.com/40';
+        document.getElementById('userName').textContent = currentUser.name;
+        document.getElementById('userEmail').textContent = currentUser.email || '이메일 없음';
+
+        // 로그인 화면 숨기고 Todo 화면 표시
+        document.getElementById('loginCard').style.display = 'none';
+        document.getElementById('todoCard').style.display = 'block';
+
+        // Todo 앱 초기화
+        init();
+    } catch (error) {
+        console.error('카카오 로그인 오류:', error);
+        alert('카카오 로그인에 실패했습니다. 다시 시도해주세요.');
+    }
+}
+
+// ===================================
+// Google 로그인 함수 (신규 GIS 방식)
+// ===================================
+
+/**
+ * JWT 토큰 디코딩 (Base64)
+ * @param {string} token - JWT 토큰
+ * @returns {Object} 디코딩된 페이로드
+ */
+function decodeJwtPayload(token) {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+    return JSON.parse(jsonPayload);
+}
+
+/**
+ * Google 로그인 응답 처리 (GIS 콜백)
+ * @param {Object} response - Google Identity Services 응답
+ */
+async function handleCredentialResponse(response) {
+    // JWT 토큰에서 사용자 정보 추출
+    const userInfo = decodeJwtPayload(response.credential);
+
+    console.log('✅ Google 로그인 성공!');
+    console.log('Name: ' + userInfo.name);
+    console.log('Email: ' + userInfo.email);
+
+    try {
+        // 서버에 회원가입/로그인 요청
+        const registerResponse = await fetch(`${USER_API}/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: userInfo.sub,
+                provider: 'google',
+                name: userInfo.name,
+                email: userInfo.email,
+                picture: userInfo.picture
+            })
+        });
+
+        const result = await registerResponse.json();
+
+        if (!registerResponse.ok) {
+            throw new Error(result.error || '회원가입/로그인 실패');
+        }
+
+        currentUser = result.user;
+        currentUser.id = userInfo.sub;
+
+        if (result.isNew) {
+            console.log('🎉 신규 회원가입 완료!');
+        } else {
+            console.log('🔑 기존 회원 로그인');
+        }
+
+        // UI 업데이트
+        document.getElementById('userAvatar').src = currentUser.picture;
+        document.getElementById('userName').textContent = currentUser.name;
+        document.getElementById('userEmail').textContent = currentUser.email;
+
+        // 로그인 화면 숨기고 Todo 화면 표시
+        document.getElementById('loginCard').style.display = 'none';
+        document.getElementById('todoCard').style.display = 'block';
+
+        // Todo 앱 초기화
+        init();
+    } catch (error) {
+        console.error('회원가입/로그인 오류:', error);
+        alert('로그인 중 오류가 발생했습니다. 다시 시도해주세요.');
+    }
+}
+
+/**
+ * Google 로그아웃
+ */
+function signOut() {
+    console.log('👋 로그아웃 되었습니다.');
+
+    // Google 자동 로그인 비활성화
+    google.accounts.id.disableAutoSelect();
+
+    // Todo 화면 숨기고 로그인 화면 표시
+    document.getElementById('todoCard').style.display = 'none';
+    document.getElementById('loginCard').style.display = 'block';
+
+    // 상태 초기화
+    todos = [];
+    currentUser = null;
+}
+
+// ===================================
+// 프로필 관리 함수
+// ===================================
+
+/**
+ * 프로필 모달 열기
+ */
+function openProfileModal() {
+    if (!currentUser) return;
+
+    const modal = document.getElementById('profileModal');
+    document.getElementById('profileAvatar').src = currentUser.picture;
+    document.getElementById('profileName').value = currentUser.name;
+    document.getElementById('profileEmail').textContent = currentUser.email;
+
+    // 가입일 표시
+    if (currentUser.createdAt) {
+        const date = new Date(currentUser.createdAt);
+        document.getElementById('profileDate').textContent = date.toLocaleDateString('ko-KR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    }
+
+    modal.classList.add('show');
+}
+
+/**
+ * 프로필 모달 닫기
+ */
+function closeProfileModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('profileModal').classList.remove('show');
+}
+
+/**
+ * 프로필 저장
+ */
+async function saveProfile() {
+    if (!currentUser) return;
+
+    const newName = document.getElementById('profileName').value.trim();
+    if (!newName) {
+        alert('이름을 입력해주세요.');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${USER_API}/${currentUser.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: newName })
+        });
+
+        if (response.ok) {
+            currentUser.name = newName;
+            document.getElementById('userName').textContent = newName;
+            closeProfileModal();
+            console.log('✏️ 프로필이 수정되었습니다.');
+            alert('프로필이 저장되었습니다.');
+        } else {
+            throw new Error('프로필 수정 실패');
+        }
+    } catch (error) {
+        console.error('프로필 수정 오류:', error);
+        alert('프로필 수정에 실패했습니다.');
+    }
+}
+
+/**
+ * 회원 탈퇴
+ */
+async function deleteAccount() {
+    if (!currentUser) return;
+
+    const confirmed = confirm('정말 탈퇴하시겠습니까?\n모든 데이터가 삭제됩니다.');
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(`${USER_API}/${currentUser.id}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            console.log('👋 회원 탈퇴 완료');
+            alert('회원 탈퇴가 완료되었습니다.');
+            closeProfileModal();
+            signOut();
+        } else {
+            throw new Error('회원 탈퇴 실패');
+        }
+    } catch (error) {
+        console.error('회원 탈퇴 오류:', error);
+        alert('회원 탈퇴에 실패했습니다.');
+    }
+}
 
 // DOM 요소 선택
 const todoInput = document.getElementById('todoInput');

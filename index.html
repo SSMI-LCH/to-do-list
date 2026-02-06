@@ -11,6 +11,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <!-- Google Identity Services (신규 방식) -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- Kakao JavaScript SDK -->
+    <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js" crossorigin="anonymous"></script>
 </head>
 
 <body>
@@ -22,8 +26,71 @@
             <div class="circle circle-3"></div>
         </div>
 
-        <!-- 메인 카드 -->
-        <div class="todo-card">
+        <!-- 로그인 섹션 (로그인 전) -->
+        <div class="login-card" id="loginCard">
+            <div class="login-icon">🔐</div>
+            <h1 class="login-title">My To-Do List</h1>
+            <p class="login-subtitle">Google 계정으로 로그인하여<br>할 일을 관리해보세요</p>
+
+            <!-- 환경변수 로드 -->
+            <script src="/env.js"></script>
+
+            <!-- Google Identity Services 로그인 버튼 -->
+            <div id="google-login-container"></div>
+            <script>
+                // Google Client ID 동적 설정 (DOM 조작)
+                document.addEventListener('DOMContentLoaded', () => {
+                    if (window.ENV && window.ENV.GOOGLE_CLIENT_ID) {
+                        const div = document.createElement('div');
+                        div.id = 'g_id_onload';
+                        div.setAttribute('data-client_id', window.ENV.GOOGLE_CLIENT_ID);
+                        div.setAttribute('data-callback', 'handleCredentialResponse');
+                        div.setAttribute('data-auto_prompt', 'false');
+                        document.getElementById('google-login-container').appendChild(div);
+
+                        document.getElementById('google-login-container').appendChild(div);
+
+                        // Google Script 동적 로드 (설정 div가 준비된 후)
+                        const script = document.createElement('script');
+                        script.src = 'https://accounts.google.com/gsi/client';
+                        script.async = true;
+                        script.defer = true;
+                        document.head.appendChild(script);
+
+                    } else {
+                        console.error('❌ Google Client ID가 설정되지 않았습니다.');
+                    }
+                });
+            </script>
+            <div class="g_id_signin" data-type="standard" data-size="large" data-theme="filled_black"
+                data-text="signin_with" data-shape="rectangular" data-logo_alignment="left">
+            </div>
+
+            <!-- 카카오 로그인 버튼 -->
+            <div class="social-divider">
+                <span>or</span>
+            </div>
+            <button class="kakao-login-btn" onclick="loginWithKakao()">
+                <img src="kakao_login_large_narrow.png" alt="카카오 로그인">
+            </button>
+
+            <p class="login-hint">소셜 계정으로 안전하게 로그인</p>
+        </div>
+
+        <!-- 메인 카드 (로그인 후) -->
+        <div class="todo-card" id="todoCard" style="display: none;">
+            <!-- 사용자 정보 헤더 -->
+            <div class="user-header" id="userHeader">
+                <div class="user-info" onclick="openProfileModal()" style="cursor: pointer;" title="프로필 관리">
+                    <img class="user-avatar" id="userAvatar" src="" alt="프로필">
+                    <div class="user-details">
+                        <span class="user-name" id="userName">사용자</span>
+                        <span class="user-email" id="userEmail">email@example.com</span>
+                    </div>
+                </div>
+                <button class="logout-btn" onclick="signOut()">로그아웃</button>
+            </div>
+
             <header class="card-header">
                 <h1>📝 My To-Do List</h1>
                 <p class="subtitle">오늘의 할 일을 관리해보세요</p>
@@ -88,6 +155,39 @@
         <footer class="app-footer">
             <p>Made with ❤️ | 2026</p>
         </footer>
+
+        <!-- 프로필 모달 -->
+        <div class="modal-overlay" id="profileModal" onclick="closeProfileModal(event)">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h2>👤 프로필 관리</h2>
+                    <button class="modal-close" onclick="closeProfileModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="profile-avatar-section">
+                        <img class="profile-avatar-large" id="profileAvatar" src="" alt="프로필">
+                    </div>
+                    <div class="profile-form">
+                        <div class="form-group">
+                            <label for="profileName">이름</label>
+                            <input type="text" id="profileName" placeholder="이름을 입력하세요">
+                        </div>
+                        <div class="form-group">
+                            <label>이메일</label>
+                            <p class="profile-email" id="profileEmail">email@example.com</p>
+                        </div>
+                        <div class="form-group">
+                            <label>가입일</label>
+                            <p class="profile-date" id="profileDate">-</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-save" onclick="saveProfile()">💾 저장</button>
+                    <button class="btn-delete" onclick="deleteAccount()">🗑️ 회원 탈퇴</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="app.js"></script>
