@@ -1,0 +1,42 @@
+{
+  "table": "todos",
+  "columns": [
+    "id",
+    "text",
+    "completed",
+    "createdAt"
+  ],
+  "row_count": 5,
+  "data": [
+    {
+      "id": 1770276478176,
+      "text": "2",
+      "completed": 0,
+      "createdAt": "2026-02-05T07:27:58.176Z"
+    },
+    {
+      "id": 1770276479114,
+      "text": "4",
+      "completed": 0,
+      "createdAt": "2026-02-05T07:27:59.114Z"
+    },
+    {
+      "id": 1770276479534,
+      "text": "5",
+      "completed": 0,
+      "createdAt": "2026-02-05T07:27:59.534Z"
+    },
+    {
+      "id": 1770276479970,
+      "text": "6",
+      "completed": 0,
+      "createdAt": "2026-02-05T07:27:59.970Z"
+    },
+    {
+      "id": 1770276480497,
+      "text": "7",
+      "completed": 0,
+      "createdAt": "2026-02-05T07:28:00.497Z"
+    }
+  ]
+}
