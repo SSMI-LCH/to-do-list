@@ -362,7 +362,10 @@ const resetBtn = document.getElementById('resetBtn');
  * @returns {Promise<Array>}
  */
 async function fetchAllTodos() {
-    const response = await fetch(API_BASE);
+    if (!currentUser) return []; // 로그인 전에는 빈 배열 반환
+    const response = await fetch(API_BASE, {
+        headers: { 'X-User-Id': currentUser.id }
+    });
     if (!response.ok) throw new Error('조회 실패');
     return response.json();
 }
@@ -374,7 +377,10 @@ async function fetchAllTodos() {
  * @returns {Promise<Array>}
  */
 async function fetchTodosByDateRange(startDate, endDate) {
-    const response = await fetch(`${API_BASE}/range?startDate=${startDate}&endDate=${endDate}`);
+    if (!currentUser) throw new Error('로그인이 필요합니다.');
+    const response = await fetch(`${API_BASE}/range?startDate=${startDate}&endDate=${endDate}`, {
+        headers: { 'X-User-Id': currentUser.id }
+    });
     if (!response.ok) throw new Error('기간 조회 실패');
     return response.json();
 }
@@ -385,9 +391,13 @@ async function fetchTodosByDateRange(startDate, endDate) {
  * @returns {Promise<Object>}
  */
 async function createTodo(text) {
+    if (!currentUser) throw new Error('로그인이 필요합니다.');
     const response = await fetch(API_BASE, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'X-User-Id': currentUser.id
+        },
         body: JSON.stringify({ text })
     });
     if (!response.ok) throw new Error('추가 실패');
@@ -401,9 +411,13 @@ async function createTodo(text) {
  * @returns {Promise}
  */
 async function updateTodoStatus(id, completed) {
+    if (!currentUser) throw new Error('로그인이 필요합니다.');
     const response = await fetch(`${API_BASE}/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'X-User-Id': currentUser.id
+        },
         body: JSON.stringify({ completed })
     });
     if (!response.ok) throw new Error('수정 실패');
@@ -415,8 +429,12 @@ async function updateTodoStatus(id, completed) {
  * @returns {Promise}
  */
 async function removeTodo(id) {
+    if (!currentUser) throw new Error('로그인이 필요합니다.');
     const response = await fetch(`${API_BASE}/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+            'X-User-Id': currentUser.id
+        }
     });
     if (!response.ok) throw new Error('삭제 실패');
 }

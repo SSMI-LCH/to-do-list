@@ -148,7 +148,12 @@ app.post('/api/auth/kakao', async (req, res) => {
  */
 app.get('/api/todos', async (req, res) => {
     try {
-        const snapshot = await db.ref('todos').orderByChild('createdAt').once('value');
+        const userId = req.headers['x-user-id'];
+        if (!userId) {
+            return res.json([]); // 비로그인 시 빈 배열 반환
+        }
+
+        const snapshot = await db.ref(`todos/${userId}`).orderByChild('createdAt').once('value');
         const todosObj = snapshot.val() || {};
         const todos = Object.values(todosObj).sort((a, b) =>
             new Date(b.createdAt) - new Date(a.createdAt)
@@ -167,6 +172,11 @@ app.get('/api/todos', async (req, res) => {
  */
 app.get('/api/todos/range', async (req, res) => {
     try {
+        const userId = req.headers['x-user-id'];
+        if (!userId) {
+            return res.status(401).json({ error: '로그인이 필요합니다.' });
+        }
+
         const { startDate, endDate } = req.query;
 
         if (!startDate || !endDate) {
@@ -176,7 +186,7 @@ app.get('/api/todos/range', async (req, res) => {
         const start = `${startDate}T00:00:00.000Z`;
         const end = `${endDate}T23:59:59.999Z`;
 
-        const snapshot = await db.ref('todos')
+        const snapshot = await db.ref(`todos/${userId}`)
             .orderByChild('createdAt')
             .startAt(start)
             .endAt(end)
@@ -199,6 +209,11 @@ app.get('/api/todos/range', async (req, res) => {
  */
 app.post('/api/todos', async (req, res) => {
     try {
+        const userId = req.headers['x-user-id'];
+        if (!userId) {
+            return res.status(401).json({ error: '로그인이 필요합니다.' });
+        }
+
         const { text } = req.body;
 
         if (!text || !text.trim()) {
@@ -215,7 +230,7 @@ app.post('/api/todos', async (req, res) => {
             createdAt
         };
 
-        await db.ref('todos/' + id).set(newTodo);
+        await db.ref(`todos/${userId}/${id}`).set(newTodo);
 
         console.log('✅ 할 일 추가:', newTodo.text);
         res.status(201).json(newTodo);
@@ -230,10 +245,15 @@ app.post('/api/todos', async (req, res) => {
  */
 app.patch('/api/todos/:id', async (req, res) => {
     try {
+        const userId = req.headers['x-user-id'];
+        if (!userId) {
+            return res.status(401).json({ error: '로그인이 필요합니다.' });
+        }
+
         const { id } = req.params;
         const { completed } = req.body;
 
-        await db.ref('todos/' + id).update({ completed });
+        await db.ref(`todos/${userId}/${id}`).update({ completed });
 
         res.json({ success: true });
     } catch (error) {
@@ -247,9 +267,14 @@ app.patch('/api/todos/:id', async (req, res) => {
  */
 app.delete('/api/todos/:id', async (req, res) => {
     try {
+        const userId = req.headers['x-user-id'];
+        if (!userId) {
+            return res.status(401).json({ error: '로그인이 필요합니다.' });
+        }
+
         const { id } = req.params;
 
-        await db.ref('todos/' + id).remove();
+        await db.ref(`todos/${userId}/${id}`).remove();
 
         console.log('🗑️ 할 일 삭제:', id);
         res.json({ success: true });
