@@ -11,7 +11,7 @@ const path = require('path');
 require('dotenv').config(); // .env 파일 로드
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
 
 // 미들웨어
@@ -34,7 +34,7 @@ app.use(express.static(path.join(__dirname)));
 // ===================================
 // Firebase 초기화
 // ===================================
-const serviceAccountPath = path.join(__dirname, 'serviceAccountKey.json');
+const serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || path.join(__dirname, 'serviceAccountKey.json');
 
 // 서비스 계정 키 파일 존재 확인
 if (!fs.existsSync(serviceAccountPath)) {
