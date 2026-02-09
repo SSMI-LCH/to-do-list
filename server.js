@@ -36,18 +36,18 @@ app.use(express.static(path.join(__dirname)));
 // ===================================
 const serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || path.join(__dirname, 'serviceAccountKey.json');
 
-// 서비스 계정 키 파일 존재 확인
-if (!fs.existsSync(serviceAccountPath)) {
-    console.error('\n❌ [Critical Error] serviceAccountKey.json 파일이 없습니다.');
-    console.error('   Firebase 연동을 위해 프로젝트 루트에 서비스 계정 키 파일을 배치해주세요.');
-    console.error('   다운로드 방법: Firebase Console > 프로젝트 설정 > 서비스 계정 > 새 비공개 키 생성\n');
-    process.exit(1);
+// 서비스 계정 키 파일 또는 환경 변수 확인
+let credential;
+if (fs.existsSync(serviceAccountPath)) {
+    console.log('🔑 서비스 계정 키(파일)를 사용하여 인증합니다.');
+    credential = admin.credential.cert(require(serviceAccountPath));
+} else {
+    console.log('⚠️ 서비스 계정 키 파일이 없습니다. Google Application Default Credentials(ADC)를 시도합니다.');
+    credential = admin.credential.applicationDefault();
 }
 
-const serviceAccount = require(serviceAccountPath);
-
 admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+    credential: credential,
     // databaseURL은 프로젝트 ID에 따라 자동 설정되거나 명시적으로 설정 필요
     databaseURL: "https://to-do-list-v1-7d6fe-default-rtdb.firebaseio.com"
 });
