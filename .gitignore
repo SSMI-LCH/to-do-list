@@ -33,3 +33,9 @@ build/
 
 # Firebase Key
 serviceAccountKey.json
+
+# Skills & rules
+.gemini/
+.agent/
+skills/
+CLAUDE.md
